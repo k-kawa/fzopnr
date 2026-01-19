@@ -1,15 +1,13 @@
 class Fzopnr < Formula
   desc "CLI tool to open URLs with fuzzy finder"
   homepage "https://github.com/k-kawa/fzopnr"
-  version "0.0.0"
+  version "1.0.0"
 
   if OS.mac?
     if Hardware::CPU.arm?
-      url "https://github.com/k-kawa/fzopnr/releases/download/v0.0.0/fzopnr-darwin-arm64"
-      sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+      d30e71869595d9b226c1023f469f0773b97d3a0c5aea86f351cd9ac11479dc"
     else
-      url "https://github.com/k-kawa/fzopnr/releases/download/v0.0.0/fzopnr-darwin-amd64"
-      sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+      ac14712a811fdce6e202ccfe8edc55e70398794f809d7e96b8fe369e2883c"
     end
   end
 
