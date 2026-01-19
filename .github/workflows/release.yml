@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: fzopnr
+            asset_name: fzopnr-linux-amd64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: fzopnr
+            asset_name: fzopnr-darwin-amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: fzopnr
+            asset_name: fzopnr-darwin-arm64
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Build
+      run: cargo build --release --target ${{ matrix.target }}
+
+    - name: Rename Binary
+      run: |
+        mv target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.asset_name }}
+        path: ${{ matrix.asset_name }}
+
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: ${{ matrix.asset_name }}
+
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: build-release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: main
+
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: fzopnr-*
+        merge-multiple: true
+        path: artifacts
+
+    - name: Update Formula
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        SHA_ARM=$(sha256sum artifacts/fzopnr-darwin-arm64 | awk '{print $1}')
+        SHA_INTEL=$(sha256sum artifacts/fzopnr-darwin-amd64 | awk '{print $1}')
+
+        # Update Version
+        sed -i "s/version \".*\"/version \"$VERSION\"/" Formula/fzopnr.rb
+        
+        # Update URLs
+        sed -i "s|v[0-9.]*/fzopnr-darwin-arm64|v$VERSION/fzopnr-darwin-arm64|" Formula/fzopnr.rb
+        sed -i "s|v[0-9.]*/fzopnr-darwin-amd64|v$VERSION/fzopnr-darwin-amd64|" Formula/fzopnr.rb
+        
+        # Update SHA256 using perl for multi-line context matching
+        # 1. Match arm64 url line, then replace the NEXT sha256 line
+        perl -i -0777 -pe "s|(url \".*fzopnr-darwin-arm64\"\n\s+sha256 \").*(\")|\$1$SHA_ARM\$2|g" Formula/fzopnr.rb
+        
+        # 2. Match amd64 url line, then replace the NEXT sha256 line
+        perl -i -0777 -pe "s|(url \".*fzopnr-darwin-amd64\"\n\s+sha256 \").*(\")|\$1$SHA_INTEL\$2|g" Formula/fzopnr.rb
+        
+        cat Formula/fzopnr.rb
+
+    - name: Commit and Push
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add Formula/fzopnr.rb
+        git commit -m "Update Homebrew formula to v${GITHUB_REF#refs/tags/v}"
+        git push origin main
