@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
 use std::env;
+use std::fs;
+
 
 #[derive(Debug, Deserialize, Default)]
 pub struct Config {
@@ -43,15 +43,15 @@ pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
     // Easiest is to collect all paths from CWD up to root.
     // [CWD, Parent, Grandparent, ... Root]
     // Then iterate in reverse (Root -> Grandparent -> Parent -> CWD) and merge.
-    
+
     let current_dir = env::current_dir()?;
     let mut paths_to_check = Vec::new();
     let mut dir = current_dir.as_path();
-    
+
     loop {
         let config_path = dir.join(".fzopnr.toml");
         if config_path.exists() {
-             paths_to_check.push(config_path);
+            paths_to_check.push(config_path);
         }
         if let Some(parent) = dir.parent() {
             dir = parent;
@@ -73,9 +73,9 @@ pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
         // If Home is part of the path (e.g. I am in ~/projects), we don't want to load ~/.fzopnr.toml again if it was already loaded?
         // Or maybe we treat Home as a "Global Default" that is ALWAYS loaded first.
         // Then we load path configs.
-        // If `path` == `home_config_path`, we might re-load. 
+        // If `path` == `home_config_path`, we might re-load.
         // Let's avoid checking uniqueness for now, it's cheap to re-parse.
-        
+
         let content = fs::read_to_string(&path)?;
         let loaded_config: Config = toml::from_str(&content)?;
         config.merge(loaded_config);

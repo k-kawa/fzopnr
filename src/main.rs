@@ -1,5 +1,3 @@
-
-
 use clap::Parser;
 use skim::prelude::*;
 use std::io::Cursor;
@@ -19,7 +17,7 @@ fn main() {
     let config = match config::load_config() {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Error loading config: {}", e);
+            eprintln!("Error loading config: {e}");
             process::exit(1);
         }
     };
@@ -28,7 +26,7 @@ fn main() {
         if let Some(url) = config.urls.get(&key) {
             open_url(url);
         } else {
-            eprintln!("Key '{}' not found.", key);
+            eprintln!("Key '{key}' not found.");
             process::exit(1);
         }
     } else {
@@ -54,7 +52,7 @@ fn main() {
 
         let selected = Skim::run_with(&options, Some(items))
             .map(|out| out.selected_items)
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         if let Some(item) = selected.first() {
             let key = item.output();
@@ -66,8 +64,8 @@ fn main() {
 }
 
 fn open_url(url: &str) {
-    println!("Opening: {}", url);
+    println!("Opening: {url}");
     if let Err(e) = webbrowser::open(url) {
-        eprintln!("Failed to open URL '{}': {}", url, e);
+        eprintln!("Failed to open URL '{url}': {e}");
     }
 }
